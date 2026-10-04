@@ -1,0 +1,10 @@
+.git
+.venv
+.env
+.env.local
+__pycache__/
+*.py[oc]
+.ruff_cache
+.files
+.claude
+data/chroma/

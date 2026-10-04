@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Emma — Agent Admin</title>
+        <style>
+            :root {
+                --bg: #0b1120;
+                --bg-glow: radial-gradient(
+                    1200px 500px at 50% -10%,
+                    rgba(59, 130, 246, 0.16),
+                    transparent 60%
+                );
+                --card: #111a2e;
+                --card-2: #0e1626;
+                --border: #24324d;
+                --border-focus: #3b82f6;
+                --text: #e7edf7;
+                --muted: #93a4bd;
+                --accent: #3b82f6;
+                --accent-2: #6366f1;
+                --ok: #34d399;
+                --warn: #fbbf24;
+                --err: #f87171;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                margin: 0;
+                min-height: 100vh;
+                background: var(--bg-glow), var(--bg);
+                color: var(--text);
+                font:
+                    15px/1.55 "Segoe UI",
+                    system-ui,
+                    -apple-system,
+                    Roboto,
+                    sans-serif;
+            }
+            .wrap {
+                max-width: 720px;
+                margin: 0 auto;
+                padding: 40px 20px 72px;
+            }
+
+            .brand {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                margin-bottom: 4px;
+            }
+            .logo {
+                width: 38px;
+                height: 38px;
+                border-radius: 10px;
+                flex: none;
+                background: linear-gradient(
+                    135deg,
+                    var(--accent),
+                    var(--accent-2)
+                );
+                display: grid;
+                place-items: center;
+                font-weight: 800;
+                font-size: 17px;
+                color: #fff;
+                box-shadow: 0 4px 18px rgba(59, 130, 246, 0.35);
+            }
+            h1 {
+                font-size: 21px;
+                margin: 0;
+                letter-spacing: 0.2px;
+            }
+            .sub {
+                color: var(--muted);
+                margin: 10px 0 26px;
+                font-size: 13px;
+            }
+
+            .card {
+                background: linear-gradient(180deg, var(--card), var(--card-2));
+                border: 1px solid var(--border);
+                border-radius: 14px;
+                padding: 24px;
+                margin-bottom: 18px;
+                box-shadow: 0 10px 30px rgba(2, 6, 17, 0.45);
+            }
+            .card h2 {
+                font-size: 11px;
+                font-weight: 700;
+                letter-spacing: 0.12em;
+                text-transform: uppercase;
+                color: var(--muted);
+                margin: 0 0 18px;
+            }
+
+            label {
+                display: block;
+                font-weight: 600;
+                font-size: 13px;
+                margin-bottom: 7px;
+            }
+            .hint {
+                color: var(--muted);
+                font-size: 12.5px;
+                margin-top: 7px;
+            }
+            .hint a {
+                color: var(--accent);
+                text-decoration: none;
+            }
+            .hint a:hover {
+                text-decoration: underline;
+            }
+
+            select,
+            input[type="text"],
+            input[type="password"],
+            textarea {
+                width: 100%;
+                padding: 10px 12px;
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                background: #0a1322;
+                color: var(--text);
+                font: inherit;
+                transition:
+                    border-color 0.15s,
+                    box-shadow 0.15s;
+            }
+            select:focus,
+            input:focus,
+            textarea:focus {
+                outline: none;
+                border-color: var(--border-focus);
+                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.22);
+            }
+            select option {
+                background: #0a1322;
+                color: var(--text);
+            }
+            textarea {
+                min-height: 340px;
+                font:
+                    13px/1.5 ui-monospace,
+                    Consolas,
+                    monospace;
+                resize: vertical;
+            }
+
+            .field {
+                margin-bottom: 20px;
+            }
+            .field:last-child {
+                margin-bottom: 0;
+            }
+            .row {
+                display: flex;
+                gap: 12px;
+                align-items: center;
+                flex-wrap: wrap;
+            }
+
+            button {
+                padding: 10px 18px;
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                background: #16203a;
+                color: var(--text);
+                font: inherit;
+                font-weight: 600;
+                cursor: pointer;
+                transition:
+                    background 0.15s,
+                    border-color 0.15s,
+                    transform 0.05s;
+            }
+            button:hover {
+                background: #1c2a4a;
+                border-color: #33507e;
+            }
+            button:active {
+                transform: translateY(1px);
+            }
+            button.primary {
+                background: linear-gradient(
+                    135deg,
+                    var(--accent),
+                    var(--accent-2)
+                );
+                border-color: transparent;
+                color: #fff;
+                box-shadow: 0 4px 16px rgba(79, 99, 241, 0.35);
+            }
+            button.primary:hover {
+                filter: brightness(1.1);
+            }
+            button:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+
+            .status {
+                margin-top: 14px;
+                font-size: 13px;
+                white-space: pre-wrap;
+            }
+            .status.ok {
+                color: var(--ok);
+            }
+            .status.warn {
+                color: var(--warn);
+            }
+            .status.err {
+                color: var(--err);
+            }
+
+            .badge {
+                display: inline-block;
+                font-size: 11px;
+                font-weight: 600;
+                padding: 3px 10px;
+                border-radius: 999px;
+                background: rgba(59, 130, 246, 0.15);
+                color: #8ab4ff;
+                border: 1px solid rgba(59, 130, 246, 0.3);
+                margin-left: 10px;
+                vertical-align: middle;
+            }
+
+            #tokenGate .card {
+                max-width: 420px;
+                margin: 110px auto 0;
+            }
+
+            .spinner {
+                display: inline-block;
+                width: 15px;
+                height: 15px;
+                border: 2px solid var(--border);
+                border-top-color: var(--accent);
+                border-radius: 50%;
+                animation: spin 0.8s linear infinite;
+                vertical-align: middle;
+            }
+            @keyframes spin {
+                to {
+                    transform: rotate(360deg);
+                }
+            }
+            .hidden {
+                display: none !important;
+            }
+
+            .divider {
+                border: none;
+                border-top: 1px solid var(--border);
+                margin: 22px 0;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="tokenGate">
+            <div class="card">
+                <div class="brand">
+                    <div class="logo">E</div>
+                    <h1>Emma — Agent Admin</h1>
+                </div>
+                <p class="sub">Enter the admin token to continue.</p>
+                <div class="field">
+                    <label for="tokenInput">Admin token</label>
+                    <input
+                        type="password"
+                        id="tokenInput"
+                        autocomplete="off"
+                        placeholder="ADMIN_API_TOKEN value"
+                    />
+                </div>
+                <button class="primary" id="tokenBtn">Continue</button>
+                <div class="status err" id="tokenStatus"></div>
+            </div>
+        </div>
+
+        <div id="app" class="wrap hidden">
+            <div class="brand">
+                <div class="logo">E</div>
+                <h1>
+                    Emma — Agent Admin
+                    <span class="badge" id="updatedBadge"></span>
+                </h1>
+            </div>
+            <p class="sub">
+                Voice and language for Emma, the Final Expense insurance agent. Changes apply to the
+                <b>next call</b>; calls in progress are unaffected.
+            </p>
+
+            <div class="card">
+                <h2>Voice &amp; language</h2>
+                <div class="field">
+                    <label for="voiceSelect">Voice</label>
+                    <select id="voiceSelect" size="1"></select>
+                    <div class="hint" id="voiceDetails"></div>
+                </div>
+                <div class="field">
+                    <label for="langSelect">Language</label>
+                    <select id="langSelect"></select>
+                    <div class="hint hidden" id="langHint">
+                        Caller Language: the agent starts in English and
+                        switches to the caller's language if it is one of the
+                        supported languages; otherwise it tells the caller it
+                        doesn't understand and stays in English. Voice tests
+                        play the English sample.
+                    </div>
+                </div>
+                <hr class="divider" />
+                <div class="row">
+                    <button id="testBtn">
+                        &#9654; Preview voice in selected language
+                    </button>
+                    <span id="testBusy" class="spinner hidden"></span>
+                </div>
+                <div class="hint" id="voiceHint"></div>
+                <audio id="player"></audio>
+            </div>
+
+            <!-- System prompt: intentionally hidden for now, but still loaded and re-submitted
+       on save so prompt editing can be re-enabled later by removing .hidden -->
+            <div class="card hidden" id="promptCard">
+                <h2>System prompt</h2>
+                <label for="promptArea">System prompt (template)</label>
+                <textarea id="promptArea" spellcheck="false"></textarea>
+                <div class="hint">
+                    Placeholders: <code>{language}</code> — replaced with the
+                    language instruction for the selected option.
+                    <code>{name}</code>, <code>{company}</code>, <code>{user_info.user_name}</code>,
+                    <code>{user_info.date_of_birth}</code>, <code>{user_info.state}</code> — filled per call
+                    by the backend; leave them as-is.
+                </div>
+                <div class="status warn hidden" id="placeholderWarn">
+                    &#9888; The prompt contains no {language} placeholder — the
+                    language selection will have no effect.
+                </div>
+            </div>
+
+            <div class="row">
+                <button class="primary" id="saveBtn">Save &amp; Apply</button>
+                <button id="resetBtn">Reset to saved</button>
+                <span id="busy" class="spinner hidden"></span>
+            </div>
+            <div class="status" id="saveStatus"></div>
+            <p class="hint" style="margin-top: 26px">
+                Full end-to-end conversation test: open the call page at
+                <a href="/app" target="_blank">/app</a>.
+            </p>
+        </div>
+
+        <script>
+            (function () {
+                const API = "/api/v1/admin";
+                let token = sessionStorage.getItem("adminToken") || "";
+                let saved = null; // last settings loaded from the server
+                let voices = []; // voice list
+
+                const $ = (id) => document.getElementById(id);
+
+                function headers(extra) {
+                    return Object.assign(
+                        { "X-Admin-Token": token },
+                        extra || {},
+                    );
+                }
+
+                async function api(path, options) {
+                    const res = await fetch(
+                        API + path,
+                        Object.assign(
+                            {
+                                headers: headers(
+                                    options && options.body
+                                        ? { "Content-Type": "application/json" }
+                                        : {},
+                                ),
+                            },
+                            options,
+                        ),
+                    );
+                    if (res.status === 401) {
+                        sessionStorage.removeItem("adminToken");
+                        throw new Error("Invalid admin token.");
+                    }
+                    if (!res.ok) {
+                        let detail = res.statusText;
+                        try {
+                            detail = (await res.json()).detail || detail;
+                        } catch (e) {}
+                        throw new Error(detail);
+                    }
+                    return res;
+                }
+
+                // ---- token gate ----
+                async function tryToken() {
+                    token = $("tokenInput").value.trim();
+                    $("tokenStatus").textContent = "";
+                    try {
+                        await api("/settings");
+                        sessionStorage.setItem("adminToken", token);
+                        $("tokenGate").classList.add("hidden");
+                        $("app").classList.remove("hidden");
+                        await loadAll();
+                    } catch (e) {
+                        $("tokenStatus").textContent = e.message;
+                    }
+                }
+                $("tokenBtn").addEventListener("click", tryToken);
+                $("tokenInput").addEventListener("keydown", (e) => {
+                    if (e.key === "Enter") tryToken();
+                });
+
+                // ---- load ----
+                async function loadSettings() {
+                    const data = await (await api("/settings")).json();
+                    saved = data.settings;
+                    const langSel = $("langSelect");
+                    langSel.innerHTML = "";
+                    data.available_languages.forEach((l) => {
+                        const o = document.createElement("option");
+                        o.value = o.textContent = l;
+                        langSel.appendChild(o);
+                    });
+                    // A previously saved language may have been removed from the
+                    // options; keep it visible (marked) rather than silently
+                    // switching the selection.
+                    if (!data.available_languages.includes(saved.language)) {
+                        const o = document.createElement("option");
+                        o.value = saved.language;
+                        o.textContent =
+                            saved.language +
+                            " (no longer supported — pick another)";
+                        langSel.appendChild(o);
+                    }
+                    langSel.value = saved.language;
+                    onLanguageChanged();
+                    // The prompt card is hidden but its value is kept live: it is re-submitted
+                    // unchanged on save, so the stored template is never lost.
+                    $("promptArea").value = saved.system_prompt;
+                    $("updatedBadge").textContent = saved.updated_at
+                        ? "saved " +
+                          saved.updated_at.slice(0, 19).replace("T", " ") +
+                          " UTC"
+                        : "";
+                    onPromptChanged();
+                }
+
+                async function loadVoices() {
+                    $("voiceHint").textContent = "Loading voices…";
+                    try {
+                        const data = await (await api("/voices")).json();
+                        voices = data.voices;
+                        renderVoices();
+                        $("voiceHint").textContent =
+                            voices.length + " voices available.";
+                    } catch (e) {
+                        voices = [];
+                        renderVoices();
+                        $("voiceHint").textContent =
+                            "Could not load voices: " + e.message;
+                    }
+                }
+
+                function voiceDetailText(v) {
+                    return v.description || "";
+                }
+
+                function showVoiceDetails() {
+                    const v = voices.find(
+                        (x) => x.id === $("voiceSelect").value,
+                    );
+                    $("voiceDetails").textContent = v ? voiceDetailText(v) : "";
+                }
+
+                function renderVoices() {
+                    const sel = $("voiceSelect");
+                    sel.innerHTML = "";
+                    voices
+                        .forEach((v) => {
+                            const o = document.createElement("option");
+                            o.value = v.id;
+                            const details = voiceDetailText(v);
+                            o.textContent = details
+                                ? v.name + " — " + details
+                                : v.name;
+                            sel.appendChild(o);
+                        });
+                    // keep the saved voice selected when visible
+                    if (
+                        saved &&
+                        [...sel.options].some((o) => o.value === saved.voice_id)
+                    ) {
+                        sel.value = saved.voice_id;
+                    }
+                    showVoiceDetails();
+                }
+
+                async function loadAll() {
+                    await loadSettings();
+                    await loadVoices();
+                }
+
+                $("voiceSelect").addEventListener("change", showVoiceDetails);
+
+                function onLanguageChanged() {
+                    $("langHint").classList.toggle(
+                        "hidden",
+                        $("langSelect").value !== "Caller Language",
+                    );
+                }
+                $("langSelect").addEventListener("change", onLanguageChanged);
+
+                // ---- prompt helpers (prompt card hidden, kept functional) ----
+                function onPromptChanged() {
+                    const text = $("promptArea").value;
+                    $("placeholderWarn").classList.toggle(
+                        "hidden",
+                        text.includes("{language}"),
+                    );
+                }
+                $("promptArea").addEventListener("input", onPromptChanged);
+
+                // ---- voice test (voice + language together) ----
+                $("testBtn").addEventListener("click", async () => {
+                    const voiceId = $("voiceSelect").value;
+                    if (!voiceId) {
+                        $("voiceHint").textContent = "Pick a voice first.";
+                        return;
+                    }
+                    $("testBtn").disabled = true;
+                    $("testBusy").classList.remove("hidden");
+                    $("voiceHint").textContent = "Synthesizing sample…";
+                    try {
+                        const res = await api("/voices/test", {
+                            method: "POST",
+                            body: JSON.stringify({
+                                voice_id: voiceId,
+                                language: $("langSelect").value,
+                            }),
+                        });
+                        const blob = await res.blob();
+                        const player = $("player");
+                        if (player.src) URL.revokeObjectURL(player.src);
+                        player.src = URL.createObjectURL(blob);
+                        await player.play();
+                        const v = voices.find((x) => x.id === voiceId);
+                        $("voiceHint").textContent =
+                            "Playing " +
+                            (v ? v.name : "voice") +
+                            " in " +
+                            $("langSelect").value +
+                            ". Nothing has been saved.";
+                    } catch (e) {
+                        $("voiceHint").textContent =
+                            "Test failed: " + e.message;
+                    } finally {
+                        $("testBtn").disabled = false;
+                        $("testBusy").classList.add("hidden");
+                    }
+                });
+
+                // ---- save / reset ----
+                $("saveBtn").addEventListener("click", async () => {
+                    const sel = $("voiceSelect");
+                    const status = $("saveStatus");
+                    if (!sel.value) {
+                        status.className = "status err";
+                        status.textContent = "Pick a voice first.";
+                        return;
+                    }
+                    $("saveBtn").disabled = true;
+                    $("busy").classList.remove("hidden");
+                    status.className = "status";
+                    status.textContent = "Saving…";
+                    try {
+                        const res = await api("/settings", {
+                            method: "PUT",
+                            body: JSON.stringify({
+                                voice_id: sel.value,
+                                language: $("langSelect").value,
+                                system_prompt: $("promptArea").value,
+                            }),
+                        });
+                        const data = await res.json();
+                        const warn =
+                            data.warnings && data.warnings.length
+                                ? "\n⚠ " + data.warnings.join("\n⚠ ")
+                                : "";
+                        if (data.saved) {
+                            status.className = "status ok";
+                            status.textContent =
+                                "✓ Saved. Takes effect on the next call." +
+                                warn;
+                        } else {
+                            status.className = "status warn";
+                            status.textContent = (data.error || "Save failed.") + warn;
+                        }
+                        await loadSettings();
+                    } catch (e) {
+                        status.className = "status err";
+                        status.textContent = "Save failed: " + e.message;
+                    } finally {
+                        $("saveBtn").disabled = false;
+                        $("busy").classList.add("hidden");
+                    }
+                });
+
+                $("resetBtn").addEventListener("click", async () => {
+                    await loadAll();
+                    $("saveStatus").className = "status";
+                    $("saveStatus").textContent =
+                        "Reverted to the last saved settings.";
+                });
+
+                // ---- boot ----
+                if (token) {
+                    $("tokenGate").classList.add("hidden");
+                    $("app").classList.remove("hidden");
+                    loadAll().catch((e) => {
+                        $("app").classList.add("hidden");
+                        $("tokenGate").classList.remove("hidden");
+                        $("tokenStatus").textContent = e.message;
+                    });
+                }
+            })();
+        </script>
+    </body>
+</html>

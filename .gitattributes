@@ -1,0 +1,6 @@
+# Vector store and other binaries: never apply line-ending conversion.
+data/chroma/** binary
+*.bin binary
+*.sqlite3 binary
+*.pdf binary
+*.wav binary

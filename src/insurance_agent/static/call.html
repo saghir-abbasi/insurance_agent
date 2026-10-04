@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Emma - Live Call</title>
+<style>
+  :root {
+    --bg: #0e1116;
+    --panel: #161b22;
+    --accent: #2ea043;
+    --danger: #da3633;
+    --text: #e6edf3;
+    --muted: #7d8590;
+    --border: #30363d;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    min-height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Tahoma", sans-serif;
+  }
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 24px;
+  }
+  .panel {
+    width: 100%;
+    max-width: 440px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px 28px;
+    text-align: center;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  }
+  .brand {
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  h1 {
+    margin: 0 0 2px;
+    font-size: 22px;
+    font-weight: 600;
+  }
+  .subtitle {
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 20px;
+  }
+  .customer {
+    font-size: 13px;
+    color: var(--muted);
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    padding: 8px 12px;
+    margin-bottom: 20px;
+  }
+  .customer b { color: var(--text); font-weight: 600; }
+  .status-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--muted);
+    margin-right: 8px;
+    vertical-align: middle;
+    transition: background 0.2s;
+  }
+  .status-dot.live { background: var(--accent); animation: pulse 1.4s infinite; }
+  .status-dot.error { background: var(--danger); }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(46, 160, 67, 0.6); }
+    50%      { box-shadow: 0 0 0 10px rgba(46, 160, 67, 0); }
+  }
+  .status {
+    color: var(--muted);
+    font-size: 13px;
+    margin-bottom: 24px;
+    min-height: 38px;
+    line-height: 1.5;
+  }
+  .timer {
+    font-variant-numeric: tabular-nums;
+    font-size: 32px;
+    font-weight: 600;
+    margin-bottom: 24px;
+    color: var(--text);
+  }
+  button {
+    width: 100%;
+    padding: 14px 20px;
+    font-size: 16px;
+    font-weight: 600;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform 0.06s, opacity 0.2s, background 0.2s;
+    line-height: 1.3;
+  }
+  button:active { transform: scale(0.98); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-start { background: var(--accent); color: white; }
+  .btn-start:hover:not(:disabled) { background: #3fb950; }
+  .btn-end { background: var(--danger); color: white; }
+  .btn-end:hover:not(:disabled) { background: #f85149; }
+  .summary {
+    text-align: left;
+    margin-top: 22px;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .summary h2 { margin: 0 0 6px; font-size: 14px; }
+  .summary ul { margin: 0; padding-left: 18px; }
+  .hint {
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 18px;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+  <div class="panel">
+    <div class="brand">Final Expense &middot; Insurance</div>
+    <h1>
+      Talk to Emma
+    </h1>
+    <div class="subtitle">
+      AI insurance agent
+    </div>
+
+    <div id="customer" class="customer"></div>
+
+    <div class="status">
+      <span id="dot" class="status-dot"></span>
+      <span id="statusText">Ready</span>
+    </div>
+
+    <div id="timer" class="timer">00:00</div>
+
+    <button id="startBtn" class="btn-start">
+      Start Call
+    </button>
+    <button id="endBtn" class="btn-end" style="display:none">
+      End Call
+    </button>
+
+    <div id="summary" class="summary" style="display:none"></div>
+
+    <div class="hint">
+      Make sure your microphone is enabled. A random mock customer is used for each call.
+    </div>
+  </div>
+
+<script>
+(() => {
+  // OpenAI Realtime PCM16 is 24 kHz mono
+  const SAMPLE_RATE = 24000;
+  const wsScheme = location.protocol === "https:" ? "wss" : "ws";
+
+  // Mock customers whose details are passed to the agent's prompt
+  const MOCK_USERS = [
+    { id: 1, name: "John_Doe", date_of_birth: "1952-01-01", state: "Texas" },
+    { id: 2, name: "Jane_Smith", date_of_birth: "1949-05-15", state: "Florida" },
+    { id: 3, name: "Alice_Johnson", date_of_birth: "1958-09-30", state: "Ohio" },
+    { id: 4, name: "Bob_Brown", date_of_birth: "1945-12-12", state: "Georgia" },
+    { id: 5, name: "Charlie_Davis", date_of_birth: "1955-07-07", state: "Arizona" },
+  ];
+
+  const startBtn = document.getElementById("startBtn");
+  const endBtn = document.getElementById("endBtn");
+  const statusText = document.getElementById("statusText");
+  const dot = document.getElementById("dot");
+  const timerEl = document.getElementById("timer");
+  const customerEl = document.getElementById("customer");
+  const summaryEl = document.getElementById("summary");
+
+  let ws = null;
+  let micCtx = null;
+  let playCtx = null;
+  let micStream = null;
+  let workletNode = null;
+  let activeSources = new Set();
+  let nextPlayTime = 0;
+  let timerHandle = null;
+  let startedAt = 0;
+  let currentUser = null;
+  let leadSummary = null;
+  let summaryPending = false;
+
+  const PCM_WORKLET = `
+    class PCMRecorder extends AudioWorkletProcessor {
+      process(inputs) {
+        const input = inputs[0];
+        if (!input || !input[0]) return true;
+        const channel = input[0];
+        const int16 = new Int16Array(channel.length);
+        for (let i = 0; i < channel.length; i++) {
+          const s = Math.max(-1, Math.min(1, channel[i]));
+          int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+        }
+        this.port.postMessage(int16.buffer, [int16.buffer]);
+        return true;
+      }
+    }
+    registerProcessor('pcm-recorder', PCMRecorder);
+  `;
+
+  const setStatus = (text, kind = "") => {
+    statusText.textContent = text;
+    dot.className = "status-dot" + (kind ? " " + kind : "");
+  };
+
+  const displayName = (user) => user.name.replace(/_/g, " ");
+
+  const pickUser = () => {
+    currentUser = MOCK_USERS[Math.floor(Math.random() * MOCK_USERS.length)];
+    customerEl.innerHTML = "";
+    const label = document.createElement("span");
+    label.textContent = "Mock customer: ";
+    const name = document.createElement("b");
+    name.textContent = displayName(currentUser);
+    const rest = document.createElement("span");
+    rest.textContent = ` · DOB ${currentUser.date_of_birth} · ${currentUser.state}`;
+    customerEl.append(label, name, rest);
+  };
+
+  const fmt = (s) =>
+    `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+
+  const startTimer = () => {
+    startedAt = Date.now();
+    timerEl.textContent = "00:00";
+    timerHandle = setInterval(() => {
+      timerEl.textContent = fmt((Date.now() - startedAt) / 1000);
+    }, 250);
+  };
+
+  const stopTimer = () => {
+    if (timerHandle) {
+      clearInterval(timerHandle);
+      timerHandle = null;
+    }
+  };
+
+  const uuid = () =>
+    crypto.randomUUID
+      ? crypto.randomUUID()
+      : "xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+          const r = (Math.random() * 16) | 0;
+          return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+        });
+
+  const b64encodeBytes = (buf) => {
+    const bytes = new Uint8Array(buf);
+    let s = "";
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      s += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+    }
+    return btoa(s);
+  };
+
+  const b64decodeToInt16 = (b64) => {
+    const bin = atob(b64);
+    const buf = new ArrayBuffer(bin.length);
+    const view = new Uint8Array(buf);
+    for (let i = 0; i < bin.length; i++) view[i] = bin.charCodeAt(i);
+    return new Int16Array(buf);
+  };
+
+  const playPcm16 = (int16) => {
+    if (!playCtx) return;
+    const f32 = new Float32Array(int16.length);
+    for (let i = 0; i < int16.length; i++) f32[i] = int16[i] / 0x8000;
+    const buffer = playCtx.createBuffer(1, f32.length, SAMPLE_RATE);
+    buffer.getChannelData(0).set(f32);
+    const src = playCtx.createBufferSource();
+    src.buffer = buffer;
+    src.connect(playCtx.destination);
+    const now = playCtx.currentTime;
+    if (nextPlayTime < now) nextPlayTime = now;
+    src.start(nextPlayTime);
+    src.onended = () => activeSources.delete(src);
+    activeSources.add(src);
+    nextPlayTime += buffer.duration;
+  };
+
+  const interruptPlayback = () => {
+    activeSources.forEach((src) => {
+      try { src.stop(); } catch {}
+    });
+    activeSources.clear();
+    nextPlayTime = 0;
+  };
+
+  // Split the one-line summary on '|' and top-level commas (not inside parentheses)
+  const summaryItems = (text) => {
+    const items = [];
+    let depth = 0;
+    let current = "";
+    for (const ch of text) {
+      if (ch === "(") depth++;
+      if (ch === ")" && depth > 0) depth--;
+      if ((ch === "," || ch === "|") && depth === 0) {
+        items.push(current.trim());
+        current = "";
+      } else {
+        current += ch;
+      }
+    }
+    items.push(current.trim());
+    return items.filter(Boolean);
+  };
+
+  // Show the licensed agent the lead summary of the call that just ended (once per call)
+  const showLeadSummary = () => {
+    if (!summaryPending) return;
+    summaryPending = false;
+
+    summaryEl.innerHTML = "";
+    const title = document.createElement("h2");
+    const list = document.createElement("ul");
+    const addItem = (label, value) => {
+      const li = document.createElement("li");
+      if (label) {
+        const b = document.createElement("b");
+        b.textContent = label + ": ";
+        li.append(b);
+      }
+      li.append(document.createTextNode(value));
+      list.append(li);
+    };
+
+    if (!leadSummary) {
+      title.textContent = "📋 Call ended — not transferred";
+      addItem("Customer", currentUser ? displayName(currentUser) : "Not provided");
+      addItem(
+        "",
+        "The customer was not transferred to a licensed agent (not interested, callback, or call ended early)."
+      );
+    } else {
+      title.textContent = "📋 Lead summary — ready for licensed agent";
+      for (const item of summaryItems(leadSummary)) {
+        const idx = item.indexOf(":");
+        if (idx !== -1 && item.slice(0, idx).trim().toLowerCase() === "customer") {
+          addItem("Customer", item.slice(idx + 1).trim());
+        } else {
+          addItem("", item);
+        }
+      }
+    }
+    summaryEl.append(title, list);
+    summaryEl.style.display = "block";
+  };
+
+  const startCall = async () => {
+    startBtn.disabled = true;
+    summaryEl.style.display = "none";
+    leadSummary = null;
+    setStatus("Requesting microphone...", "");
+
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          sampleRate: SAMPLE_RATE,
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
+    } catch (e) {
+      setStatus("Microphone permission denied", "error");
+      startBtn.disabled = false;
+      return;
+    }
+
+    setStatus("Connecting...", "");
+
+    const sessionId = uuid();
+    const params = new URLSearchParams({
+      user_id: String(currentUser.id),
+      user_name: currentUser.name,
+      date_of_birth: currentUser.date_of_birth,
+      state: currentUser.state,
+      // Browser audio is always PCM16, whatever the server's ENVIRONMENT default
+      audio_format: "pcm16",
+    });
+    const wsUrl = `${wsScheme}://${location.host}/api/v1/realtime/call-session/${sessionId}?${params}`;
+    const sock = (ws = new WebSocket(wsUrl));
+    // Delayed teardown that ignores sockets from an earlier call
+    const cleanupAfterPlayback = () => {
+      const remaining = playCtx ? Math.max(0, nextPlayTime - playCtx.currentTime) : 0;
+      setTimeout(() => { if (ws === sock) cleanup(); }, remaining * 1000);
+    };
+
+    ws.onopen = async () => {
+      try {
+        micCtx = new (window.AudioContext || window.webkitAudioContext)({
+          sampleRate: SAMPLE_RATE,
+        });
+        playCtx = new (window.AudioContext || window.webkitAudioContext)({
+          sampleRate: SAMPLE_RATE,
+        });
+
+        const blob = new Blob([PCM_WORKLET], { type: "application/javascript" });
+        const url = URL.createObjectURL(blob);
+        await micCtx.audioWorklet.addModule(url);
+
+        const source = micCtx.createMediaStreamSource(micStream);
+        workletNode = new AudioWorkletNode(micCtx, "pcm-recorder");
+        workletNode.port.onmessage = (e) => {
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(
+              JSON.stringify({
+                event: "media",
+                media: { payload: b64encodeBytes(e.data) },
+              })
+            );
+          }
+        };
+        source.connect(workletNode);
+
+        startBtn.style.display = "none";
+        endBtn.style.display = "block";
+        endBtn.disabled = false;
+        summaryPending = true;
+        setStatus("On call", "live");
+        startTimer();
+      } catch (e) {
+        console.error(e);
+        setStatus("Audio setup failed", "error");
+        cleanup();
+      }
+    };
+
+    ws.onmessage = (event) => {
+      let data;
+      try {
+        data = JSON.parse(event.data);
+      } catch {
+        return;
+      }
+      if (data.event === "media") {
+        playPcm16(b64decodeToInt16(data.media.payload));
+      } else if (data.event === "clear") {
+        interruptPlayback();
+      } else if (data.event === "escalate_to_human") {
+        leadSummary = data.reason || "";
+      } else if (data.event === "disconnect") {
+        setStatus(data.reason || "Call ended by agent", "");
+        // Let the agent's last words finish before tearing down audio
+        cleanupAfterPlayback();
+      }
+    };
+
+    ws.onerror = () => {
+      setStatus("Connection error", "error");
+    };
+
+    ws.onclose = () => {
+      // Keep queued agent audio playing; cleanup happens once it's done
+      cleanupAfterPlayback();
+    };
+  };
+
+  const cleanup = () => {
+    stopTimer();
+    interruptPlayback();
+    if (workletNode) {
+      try { workletNode.disconnect(); } catch {}
+      workletNode = null;
+    }
+    if (micCtx) {
+      try { micCtx.close(); } catch {}
+      micCtx = null;
+    }
+    if (playCtx) {
+      try { playCtx.close(); } catch {}
+      playCtx = null;
+    }
+    if (micStream) {
+      micStream.getTracks().forEach((t) => t.stop());
+      micStream = null;
+    }
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      try { ws.close(); } catch {}
+    }
+    ws = null;
+    endBtn.style.display = "none";
+    startBtn.style.display = "block";
+    startBtn.disabled = false;
+    if (statusText.textContent === "On call") setStatus("Ready");
+    showLeadSummary();
+    // Next call uses a fresh mock customer
+    pickUser();
+  };
+
+  const endCall = () => {
+    endBtn.disabled = true;
+    setStatus("Ending call...");
+    cleanup();
+    setStatus("Ready");
+  };
+
+  pickUser();
+  startBtn.addEventListener("click", startCall);
+  endBtn.addEventListener("click", endCall);
+})();
+</script>
+</body>
+</html>

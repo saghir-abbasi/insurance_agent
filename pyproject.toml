@@ -1,0 +1,35 @@
+[project]
+name = "insurance-agent"
+version = "0.1.0"
+description = "Emma: OpenAI Realtime voice agent for Final Expense insurance lead qualification and licensed-agent transfer"
+readme = "README.md"
+authors = [
+    { name = "Saghir Abbasi", email = "saghir.mdf@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "chromadb>=1.5.9",
+    "fastapi>=0.115.14",
+    "fastembed>=0.8.0",
+    "openai-agents==0.4.2",
+    "pydantic>=2.11.7",
+    "pydantic-settings>=2.10.1",
+    "pypdf>=6.14.2",
+    "python-dotenv>=1.2.1",
+    "requests>=2.32.5",
+    "uvicorn>=0.35.0",
+    "websockets>=15.0.1",
+]
+
+[project.scripts]
+server = "insurance_agent.main:main"
+ingest = "insurance_agent.core.knowledge_base.rag:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14.6",
+]
